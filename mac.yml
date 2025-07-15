@@ -1,0 +1,41 @@
+name: MacRDP
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: MacRDP
+    runs-on: macos-latest
+    
+    steps:
+    - name: Enable Remote Access (VNC)
+      run: |
+        # Enable Screen Sharing (VNC)
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent &
+        sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
+        echo "✅ Screen Sharing enabled"
+
+        # Set VNC password to 'password'
+        echo "Setting VNC password..."
+        echo "password" | perl -we 'print crypt(<>, "VN")' > ~/.vncpwd
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent -setvnclegacy -setvncpw password
+
+    - name: Install Cloudflared
+      run: |
+        brew install cloudflared
+
+    - name: Start Cloudflare Tunnel
+      env:
+        CF_TUNNEL_TOKEN: ${{ secrets.CF_TUNNEL_TOKEN }}
+      run: |
+        echo "🌀 Starting Cloudflare Tunnel..."
+        cloudflared tunnel --no-autoupdate run --token "$CF_TUNNEL_TOKEN" &
+
+    - name: Log In Details To VNC Server
+      run: |
+         echo "🔓 VNC is ready!"
+         echo "Connect using a VNC viewer to your Cloudflare tunnel URL on port 5900."
+         echo "🔑 VNC Password: password"
+
+    - name: MacOS System running...
+      uses: mxschmitt/action-tmate@v2
