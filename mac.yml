@@ -26,7 +26,7 @@ jobs:
 
     - name: Start Cloudflare Tunnel
       env:
-        CF_TUNNEL_TOKEN: ${{ secrets.CF_TUNNEL_TOKEN }}
+        CF_TUNNEL_TOKEN: eyJhIjoiMjFlZmI3OGFmZWIxZTQyM2M3MDFkOWNkNjgzNjFhYTMiLCJ0IjoiMzE3ODk2ZjktYzU5OC00OGM4LWI5ZDItNzZkZjgxMDIwMjQ1IiwicyI6Ik4yTTRZV000WVRBdE1UWTNaQzAwWmpZNUxUbGhOV1l0WkdGallUZ3paV05pWmpJMiJ9
       run: |
         echo "🌀 Starting Cloudflare Tunnel..."
         cloudflared tunnel --no-autoupdate run --token "$CF_TUNNEL_TOKEN" &
