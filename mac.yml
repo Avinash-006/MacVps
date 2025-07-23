@@ -3,40 +3,38 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    name: MacRDP
+  macgui:
+    name: Mac GUI Access via VNC + Cloudflare
     runs-on: macos-latest
-    timeout-minutes: 60
-
     steps:
-    - name: Enable Remote Access (VNC)
+    
+    - name: 📦 Install Cloudflare Tunnel
+      run: |
+        brew install cloudflared
+
+    - name: 🛠️ Enable VNC + Remote Access
       run: |
         echo "🔧 Enabling Screen Sharing..."
         sudo systemsetup -setremotelogin on
         sudo launchctl load -w /System/Library/LaunchDaemons/com.apple.screensharing.plist
         sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent -activate
         sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent -setvnclegacy -vnclegacy yes
-        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent -setvncpw "password"
-        echo "✅ Screen Sharing enabled with password 'password'"
+        echo -n "password" | perl -we 'print pack("H*", unpack("H*", <>))' > ~/.vncpwd
+        sudo chmod 600 ~/.vncpwd
+        sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/MacOS/ARDAgent \
+          -configure -access -on -users $USER -privs -all
+        echo "✅ VNC is configured with password: password"
 
-    - name: Install Cloudflared
+    - name: 🌀 Start Cloudflare Tunnel
       run: |
-        brew install cloudflared
+        echo "🌐 Starting Cloudflare Tunnel..."
+        cloudflared tunnel --url vnc://localhost:5900 --no-autoupdate --token eyJhIjoiMjFlZmI3OGFmZWIxZTQyM2M3MDFkOWNkNjgzNjFhYTMiLCJ0IjoiMzE3ODk2ZjktYzU5OC00OGM4LWI5ZDItNzZkZjgxMDIwMjQ1IiwicyI6Ik4yTTRZV000WVRBdE1UWTNaQzAwWmpZNUxUbGhOV1l0WkdGallUZ3paV > tunnel.log 2>&1 &
 
-    - name: Start Cloudflare Tunnel
-      env:
-        CF_TUNNEL_TOKEN: eyJhIjoiMjFlZmI3OGFmZWIxZTQyM2M3MDFkOWNkNjgzNjFhYTMiLCJ0IjoiMzE3ODk2ZjktYzU5OC00OGM4LWI5ZDItNzZkZjgxMDIwMjQ1IiwicyI6Ik4yTTRZV000WVRBdE1UWTNaQzAwWmpZNUxUbGhOV1l0WkdGallUZ3paV05pWmpJMiJ9
-      run: |
-        echo "🌀 Starting Cloudflare Tunnel..."
-        nohup cloudflared tunnel --no-autoupdate run --token "$CF_TUNNEL_TOKEN" > tunnel.log 2>&1 &
+        sleep 5
+        echo "🔗 You can connect to this macOS runner via VNC client using:"
+        echo "🔒 Password: password"
+        grep -o 'https://.*\.trycloudflare\.com' tunnel.log || echo "⚠️ URL not yet available – wait a few seconds and check Logs."
 
-    - name: Log In Details To VNC Server
-      run: |
-        echo "🔓 VNC is ready!"
-        echo "🔑 VNC Password: password"
-        echo "🌐 Connect using VNC Viewer at your Cloudflare Tunnel URL on port 5900"
-        echo "💡 Example: vnc://<your-subdomain>.trycloudflare.com:5900"
-        echo "📜 Full log at tunnel.log"
-
-    - name: Open SSH via tmate (optional)
-      uses: mxschmitt/action-tmate@v2
+    - name: 🛠️ Optional Interactive Debug Shell
+      uses: mxschmitt/action-tmate@v3
+      timeout-minutes: 60
